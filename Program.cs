@@ -1,6 +1,6 @@
 ﻿using System;
+using System.IO;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using OpenAI_API;
 using OpenAI_API.Completions;
 
@@ -10,54 +10,75 @@ namespace ChatConsole
     {
         static async Task Main(string[] args)
         {
-            var builder = new ConfigurationBuilder()
-                .AddUserSecrets<Program>();
-
-            var configuration = builder.Build();
-            var openAiApiKey = configuration["OpenAI:ApiKey"];
+            var openAiApiKey = "your_api_key";
 
             if (string.IsNullOrEmpty(openAiApiKey))
             {
-                Console.WriteLine("API key is missing. Please add the API key to user secrets.");
+                Console.WriteLine("❌ OPEN_AI_KEY is missing in your .env file.");
                 return;
             }
 
-            APIAuthentication aPIAuthentication = new APIAuthentication(openAiApiKey);
-            OpenAIAPI openAiApi = new OpenAIAPI(aPIAuthentication);
+            var openAiApi = new OpenAIAPI(new APIAuthentication(openAiApiKey));
 
-            Console.WriteLine("Do you mind telling me who can I help you charm? (Gender/ Pronouns)");
-            var gender = Console.ReadLine();
-            Console.WriteLine("Tell me something about your personality, your likes, dislikes, and quirks? What gets you going?");
-            var personality = Console.ReadLine();
-            Console.WriteLine("Tell us about this person you wanna spill your charm on?");
-            var charmer = Console.ReadLine();
-            Console.WriteLine("Hm... That's so cool! What situation do you want the pickup line?");
-            var context = Console.ReadLine();
+            var mcpEvent = new McpEvent();
+
+            Console.WriteLine("🧑‍💼 Enter your role (e.g. Junior Developer):");
+            mcpEvent.Role = Console.ReadLine();
+
+            Console.WriteLine("🏢 Enter your department (e.g. IT, HR, Marketing):");
+            mcpEvent.Department = Console.ReadLine();
+
+            Console.WriteLine("📈 Enter your experience level (e.g. Beginner, Intermediate, Advanced):");
+            mcpEvent.ExperienceLevel = Console.ReadLine();
+
+            Console.WriteLine("📚 What’s your preferred onboarding style? (Checklist, Conversational, Mixed):");
+            mcpEvent.PreferredStyle = Console.ReadLine();
+
+            Console.WriteLine("🎙️ Choose a tone (Friendly, Formal, Supportive):");
+            mcpEvent.Tone = Console.ReadLine();
 
             try
             {
-                string prompt = $"Craft a pickup line which is short, quirky and fresh for someone with the personality of {personality} to a {gender} with a personality of: {charmer}. This pickup line has to be in the genre of {context}. Do not make it too long, please.";
-                string model = "gpt-3.5-turbo-instruct";
-                int maxTokens = 80;
+                string prompt = $"""
+Event: onboarding_assistant
+
+You are an intelligent onboarding assistant for a corporate company named XYZ.
+
+The user is joining as a {mcpEvent.Role} in the {mcpEvent.Department} department. They have {mcpEvent.ExperienceLevel} experience and prefer a {mcpEvent.PreferredStyle} onboarding style. Please suggest 3 helpful and relevant goals for their first week at work.
+
+Respond in a {mcpEvent.Tone.ToLower()} tone and keep it concise but clear.
+""";
 
                 var completionRequest = new CompletionRequest
                 {
                     Prompt = prompt,
-                    Model = model,
-                    MaxTokens = maxTokens,
-                    Temperature = 0.5
+                    Model = "gpt-3.5-turbo-instruct",
+                    MaxTokens = 150,
+                    Temperature = 0.7
                 };
 
                 var completionResult = await openAiApi.Completions.CreateCompletionAsync(completionRequest);
-                var generatedText = completionResult.Completions[0].Text;
+                var generatedText = completionResult.Completions[0].Text.Trim();
 
-                Console.WriteLine("Generated text:");
+                Console.WriteLine("\n📌 Here are your suggested first-week goals:");
+                Console.WriteLine("----------------------------------");
                 Console.WriteLine(generatedText);
+                Console.WriteLine("----------------------------------");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"❌ Error: {ex.Message}");
             }
         }
+    }
+
+    public class McpEvent
+    {
+        public string Type { get; set; } = "onboarding_assistant";
+        public string Role { get; set; }
+        public string Department { get; set; }
+        public string ExperienceLevel { get; set; }
+        public string PreferredStyle { get; set; }
+        public string Tone { get; set; }
     }
 }
